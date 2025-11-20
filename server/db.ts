@@ -1,6 +1,13 @@
-import { eq } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { 
+  InsertUser, users, 
+  keywords, InsertKeyword, Keyword,
+  melodies, InsertMelody, Melody,
+  lyrics, InsertLyric, Lyric,
+  userPreferences, InsertUserPreference, UserPreference,
+  feedbackHistory, InsertFeedbackHistory, FeedbackHistory
+} from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -17,6 +24,8 @@ export async function getDb() {
   }
   return _db;
 }
+
+// ========== User Operations ==========
 
 export async function upsertUser(user: InsertUser): Promise<void> {
   if (!user.openId) {
@@ -89,4 +98,155 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+// ========== Keyword Operations ==========
+
+export async function createKeyword(keyword: InsertKeyword): Promise<Keyword> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.insert(keywords).values(keyword);
+  const inserted = await db.select().from(keywords).where(eq(keywords.id, Number(result[0].insertId))).limit(1);
+  return inserted[0]!;
+}
+
+export async function getKeywordsByUserId(userId: number): Promise<Keyword[]> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return db.select().from(keywords).where(eq(keywords.userId, userId)).orderBy(desc(keywords.createdAt));
+}
+
+export async function updateKeyword(id: number, updates: Partial<InsertKeyword>): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.update(keywords).set(updates).where(eq(keywords.id, id));
+}
+
+export async function deleteKeyword(id: number): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.delete(keywords).where(eq(keywords.id, id));
+}
+
+// ========== Melody Operations ==========
+
+export async function createMelody(melody: InsertMelody): Promise<Melody> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.insert(melodies).values(melody);
+  const inserted = await db.select().from(melodies).where(eq(melodies.id, Number(result[0].insertId))).limit(1);
+  return inserted[0]!;
+}
+
+export async function getMelodiesByUserId(userId: number): Promise<Melody[]> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return db.select().from(melodies).where(eq(melodies.userId, userId)).orderBy(desc(melodies.createdAt));
+}
+
+export async function updateMelody(id: number, updates: Partial<InsertMelody>): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.update(melodies).set(updates).where(eq(melodies.id, id));
+}
+
+export async function deleteMelody(id: number): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.delete(melodies).where(eq(melodies.id, id));
+}
+
+// ========== Lyric Operations ==========
+
+export async function createLyric(lyric: InsertLyric): Promise<Lyric> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.insert(lyrics).values(lyric);
+  const inserted = await db.select().from(lyrics).where(eq(lyrics.id, Number(result[0].insertId))).limit(1);
+  return inserted[0]!;
+}
+
+export async function getLyricsByUserId(userId: number): Promise<Lyric[]> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return db.select().from(lyrics).where(eq(lyrics.userId, userId)).orderBy(desc(lyrics.createdAt));
+}
+
+export async function getLyricById(id: number): Promise<Lyric | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  const result = await db.select().from(lyrics).where(eq(lyrics.id, id)).limit(1);
+  return result[0];
+}
+
+export async function updateLyric(id: number, updates: Partial<InsertLyric>): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.update(lyrics).set(updates).where(eq(lyrics.id, id));
+}
+
+export async function deleteLyric(id: number): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.delete(lyrics).where(eq(lyrics.id, id));
+}
+
+// ========== User Preferences Operations ==========
+
+export async function getUserPreference(userId: number): Promise<UserPreference | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  const result = await db.select().from(userPreferences).where(eq(userPreferences.userId, userId)).limit(1);
+  return result[0];
+}
+
+export async function upsertUserPreference(preference: InsertUserPreference): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.insert(userPreferences).values(preference).onDuplicateKeyUpdate({
+    set: {
+      preferredLanguages: preference.preferredLanguages,
+      allowMixedLanguage: preference.allowMixedLanguage,
+      defaultMelodyType: preference.defaultMelodyType,
+      updatedAt: new Date(),
+    },
+  });
+}
+
+// ========== Feedback History Operations ==========
+
+export async function createFeedback(feedback: InsertFeedbackHistory): Promise<FeedbackHistory> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.insert(feedbackHistory).values(feedback);
+  const inserted = await db.select().from(feedbackHistory).where(eq(feedbackHistory.id, Number(result[0].insertId))).limit(1);
+  return inserted[0]!;
+}
+
+export async function getFeedbackByLyricId(lyricId: number): Promise<FeedbackHistory[]> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return db.select().from(feedbackHistory).where(eq(feedbackHistory.lyricId, lyricId)).orderBy(desc(feedbackHistory.createdAt));
+}
+
+export async function getFeedbackByUserId(userId: number): Promise<FeedbackHistory[]> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return db.select().from(feedbackHistory).where(eq(feedbackHistory.userId, userId)).orderBy(desc(feedbackHistory.createdAt));
+}
